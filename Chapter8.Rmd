@@ -1,0 +1,11 @@
+# This file is just to get the data i need exported locally
+
+```{r}
+library(bayesrules)
+library(tidyverse)
+```
+
+```{r}
+write.csv(pulse_of_the_nation, "pulse_data.csv")
+```
+
