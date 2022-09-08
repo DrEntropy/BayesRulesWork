@@ -1,0 +1,17 @@
+# This file is just to get the data i need exported locally (coffee data)
+
+```{r}
+library(bayesrules)
+library(tidyverse)
+```
+
+```{r}
+data("coffee_ratings")
+head(coffee_ratings)
+```
+
+
+```{r}
+write.csv(coffee_ratings, "coffee_ratings.csv")
+```
+
