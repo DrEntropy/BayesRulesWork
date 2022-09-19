@@ -91,6 +91,61 @@ This looks quite good to me.
 
 ### Exercise 12.8
 
+```{python}
+model2 = bmb.Model('count ~ year + hours', eagles, family='negativebinomial')
+model2.build()
+model2 
+```
+
+```{python}
+model2.plot_priors()
+```
+
+I am not too sure what bambi is doing with `alpha` prior here, so once again i will use my own exponential prior
+
+
+```{python}
+alpha_prior = bmb.Prior('Exponential', lam= 1/50.)
+model2 = bmb.Model('count ~ year + hours', eagles, family='negativebinomial',priors = {'alpha': alpha_prior})
+model2.build()
+model2 
+```
+
+
+```{python}
+model2.plot_priors()
+```
+
+```{python}
+results2 = model2.fit(draws=10000, chains=4,cores=1)
+az.plot_trace(results2)
+az.summary(results2)
+```
+
+Diagnostics look good, so moving on to look at the posterior check>
+
+```{python}
+model2.predict(results2, kind='pps', inplace= True)
+az.plot_ppc(results2, num_pp_samples = 30)
+```
+
+Not sure it was worth all that extra trouble. Perhaps I am missing something,  because the count has a mean that is close to the standard deviation (across all years and hours). 
+
+Based on this year and hours are both significant, but year is clearly the stronger predictor. 
+
+Lets grab the raw samples so i can compute directly the quantile for the year coefficient.
+
+
+
+```{python}
+year_coeff_samples = results2.posterior.year.values.flatten()
+np.quantile(year_coeff_samples,[.025,.975])
+```
+
+
+
+#### Ok i am going to redo this using `pymc` direct
+
 
 
 ### Exercise 12.9

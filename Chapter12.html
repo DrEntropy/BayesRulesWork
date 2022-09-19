@@ -514,14 +514,14 @@ Quarto issue
   <tbody>
     <tr>
       <th>Intercept</th>
-      <td>-159.560</td>
-      <td>25.492</td>
-      <td>-206.316</td>
-      <td>-110.756</td>
-      <td>0.176</td>
-      <td>0.125</td>
-      <td>20996.0</td>
-      <td>21942.0</td>
+      <td>-159.408</td>
+      <td>25.632</td>
+      <td>-207.358</td>
+      <td>-111.099</td>
+      <td>0.174</td>
+      <td>0.123</td>
+      <td>21738.0</td>
+      <td>23496.0</td>
       <td>1.0</td>
     </tr>
     <tr>
@@ -529,11 +529,11 @@ Quarto issue
       <td>0.080</td>
       <td>0.013</td>
       <td>0.055</td>
-      <td>0.103</td>
+      <td>0.104</td>
       <td>0.000</td>
       <td>0.000</td>
-      <td>20945.0</td>
-      <td>21840.0</td>
+      <td>21706.0</td>
+      <td>23293.0</td>
       <td>1.0</td>
     </tr>
     <tr>
@@ -541,11 +541,11 @@ Quarto issue
       <td>0.003</td>
       <td>0.004</td>
       <td>-0.004</td>
-      <td>0.010</td>
+      <td>0.011</td>
       <td>0.000</td>
       <td>0.000</td>
-      <td>24123.0</td>
-      <td>26122.0</td>
+      <td>24288.0</td>
+      <td>24266.0</td>
       <td>1.0</td>
     </tr>
   </tbody>
@@ -553,7 +553,7 @@ Quarto issue
 </div>
 </div>
 <div class="cell-output cell-output-display">
-<p><img src="Chapter12_files/figure-html/cell-10-output-16.png" width="920" height="496"></p>
+<p><img src="Chapter12_files/figure-html/cell-10-output-16.png" width="917" height="496"></p>
 </div>
 </div>
 <p>Diagnostics look good, so moving on to look at the posterior check&gt;</p>
@@ -571,6 +571,297 @@ Quarto issue
 </section>
 <section id="exercise-12.8" class="level3">
 <h3 class="anchored" data-anchor-id="exercise-12.8">Exercise 12.8</h3>
+<div class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>model2 <span class="op">=</span> bmb.Model(<span class="st">'count ~ year + hours'</span>, eagles, family<span class="op">=</span><span class="st">'negativebinomial'</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>model2.build()</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>model2 </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<pre><code>Formula: count ~ year + hours
+Family name: Negativebinomial
+Link: log
+Observations: 37
+Priors:
+  Common-level effects
+    Intercept ~ Normal(mu: 0, sigma: 468.302)
+    year ~ Normal(mu: 0.0, sigma: 0.2341)
+    hours ~ Normal(mu: 0.0, sigma: 0.0806)
+
+  Auxiliary parameters
+    alpha ~ HalfCauchy(beta: 1)</code></pre>
+</div>
+</div>
+<div class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>model2.plot_priors()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="12">
+<pre><code>array([&lt;AxesSubplot:title={'center':'Intercept'}&gt;,
+       &lt;AxesSubplot:title={'center':'year'}&gt;,
+       &lt;AxesSubplot:title={'center':'hours'}&gt;,
+       &lt;AxesSubplot:title={'center':'count_alpha'}&gt;], dtype=object)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<p><img src="Chapter12_files/figure-html/cell-13-output-2.png" width="2415" height="487"></p>
+</div>
+</div>
+<p>I am not too sure what bambi is doing with <code>alpha</code> prior here, so once again i will use my own exponential prior</p>
+<div class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>alpha_prior <span class="op">=</span> bmb.Prior(<span class="st">'Exponential'</span>, lam<span class="op">=</span> <span class="dv">1</span><span class="op">/</span><span class="fl">50.</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>model2 <span class="op">=</span> bmb.Model(<span class="st">'count ~ year + hours'</span>, eagles, family<span class="op">=</span><span class="st">'negativebinomial'</span>,priors <span class="op">=</span> {<span class="st">'alpha'</span>: alpha_prior})</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>model2.build()</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>model2 </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="13">
+<pre><code>Formula: count ~ year + hours
+Family name: Negativebinomial
+Link: log
+Observations: 37
+Priors:
+  Common-level effects
+    Intercept ~ Normal(mu: 0, sigma: 468.302)
+    year ~ Normal(mu: 0.0, sigma: 0.2341)
+    hours ~ Normal(mu: 0.0, sigma: 0.0806)
+
+  Auxiliary parameters
+    alpha ~ Exponential(lam: 0.02)</code></pre>
+</div>
+</div>
+<div class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>model2.plot_priors()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<pre><code>array([&lt;AxesSubplot:title={'center':'Intercept'}&gt;,
+       &lt;AxesSubplot:title={'center':'year'}&gt;,
+       &lt;AxesSubplot:title={'center':'hours'}&gt;,
+       &lt;AxesSubplot:title={'center':'count_alpha'}&gt;], dtype=object)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<p><img src="Chapter12_files/figure-html/cell-15-output-2.png" width="2415" height="487"></p>
+</div>
+</div>
+<div class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>results2 <span class="op">=</span> model2.fit(draws<span class="op">=</span><span class="dv">10000</span>, chains<span class="op">=</span><span class="dv">4</span>,cores<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>az.plot_trace(results2)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>az.summary(results2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Auto-assigning NUTS sampler...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Initializing NUTS using jitter+adapt_diag...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Sequential sampling (4 chains in 1 job)</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>NUTS: [Intercept, year, hours, count_alpha]</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="11000" class="" max="11000" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [11000/11000 00:20&lt;00:00 Sampling chain 0, 0 divergences]
+    </div>
+    
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>/Users/ronaldlegere/opt/anaconda3/envs/BayesRules/lib/python3.7/site-packages/scipy/stats/_continuous_distns.py:624: RuntimeWarning: overflow encountered in _beta_ppf
+  return _boost._beta_ppf(q, a, b)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="11000" class="" max="11000" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [11000/11000 00:20&lt;00:00 Sampling chain 1, 0 divergences]
+    </div>
+    
+</div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="11000" class="" max="11000" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [11000/11000 00:18&lt;00:00 Sampling chain 2, 0 divergences]
+    </div>
+    
+</div>
+<div class="cell-output cell-output-display">
+
+<style>
+    /* Turns off some styling */
+    progress {
+        /* gets rid of default border in Firefox and Opera. */
+        border: none;
+        /* Needs to be in here for Safari polyfill so background images work as expected. */
+        background-size: auto;
+    }
+    progress:not([value]), progress:not([value])::-webkit-progress-bar {
+        background: repeating-linear-gradient(45deg, #7e7e7e, #7e7e7e 10px, #5c5c5c 10px, #5c5c5c 20px);
+    }
+    .progress-bar-interrupted, .progress-bar-interrupted::-webkit-progress-bar {
+        background: #F44336;
+    }
+</style>
+</div>
+<div class="cell-output cell-output-display">
+
+    <div>
+      <progress value="11000" class="" max="11000" style="width:300px; height:20px; vertical-align: middle;"></progress>
+      100.00% [11000/11000 00:21&lt;00:00 Sampling chain 3, 0 divergences]
+    </div>
+    
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Sampling 4 chains for 1_000 tune and 10_000 draw iterations (4_000 + 40_000 draws total) took 82 seconds.</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+
+<div>
+
+<table class="dataframe table table-sm table-striped">
+  <thead>
+    <tr>
+      <th></th>
+      <th>mean</th>
+      <th>sd</th>
+      <th>hdi_3%</th>
+      <th>hdi_97%</th>
+      <th>mcse_mean</th>
+      <th>mcse_sd</th>
+      <th>ess_bulk</th>
+      <th>ess_tail</th>
+      <th>r_hat</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Intercept</th>
+      <td>-158.513</td>
+      <td>27.672</td>
+      <td>-210.555</td>
+      <td>-106.249</td>
+      <td>0.159</td>
+      <td>0.114</td>
+      <td>30448.0</td>
+      <td>25905.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>year</th>
+      <td>0.079</td>
+      <td>0.014</td>
+      <td>0.053</td>
+      <td>0.106</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>30341.0</td>
+      <td>25993.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>hours</th>
+      <td>0.004</td>
+      <td>0.004</td>
+      <td>-0.005</td>
+      <td>0.011</td>
+      <td>0.000</td>
+      <td>0.000</td>
+      <td>34600.0</td>
+      <td>28094.0</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>count_alpha</th>
+      <td>48.034</td>
+      <td>46.467</td>
+      <td>1.993</td>
+      <td>132.671</td>
+      <td>0.258</td>
+      <td>0.184</td>
+      <td>33093.0</td>
+      <td>30394.0</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<p><img src="Chapter12_files/figure-html/cell-16-output-16.png" width="917" height="641"></p>
+</div>
+</div>
+<p>Diagnostics look good, so moving on to look at the posterior check&gt;</p>
+<div class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>model2.predict(results2, kind<span class="op">=</span><span class="st">'pps'</span>, inplace<span class="op">=</span> <span class="va">True</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>az.plot_ppc(results2, num_pp_samples <span class="op">=</span> <span class="dv">30</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="16">
+<pre><code>&lt;AxesSubplot:xlabel='count / count'&gt;</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<p><img src="Chapter12_files/figure-html/cell-17-output-2.png" width="545" height="434"></p>
+</div>
+</div>
+<p>Not sure it was worth all that extra trouble. Perhaps I am missing something, because the count has a mean that is close to the standard deviation (across all years and hours).</p>
+<p>Based on this year and hours are both significant, but year is clearly the stronger predictor.</p>
+<p>Lets grab the raw samples so i can compute directly the quantile for the year coefficient.</p>
+<div class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>year_coeff_samples <span class="op">=</span> results2.posterior.year.values.flatten()</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>np.quantile(year_coeff_samples,[<span class="fl">.025</span>,<span class="fl">.975</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="17">
+<pre><code>array([0.0520712 , 0.10745111])</code></pre>
+</div>
+</div>
+<section id="ok-i-am-going-to-redo-this-using-pymc-direct" class="level4">
+<h4 class="anchored" data-anchor-id="ok-i-am-going-to-redo-this-using-pymc-direct">Ok i am going to redo this using <code>pymc</code> direct</h4>
+</section>
 </section>
 <section id="exercise-12.9" class="level3">
 <h3 class="anchored" data-anchor-id="exercise-12.9">Exercise 12.9</h3>
