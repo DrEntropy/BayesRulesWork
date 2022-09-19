@@ -1,0 +1,96 @@
+## Chapter 12 exercises.
+
+* testing out doing this as QMD instead of IPYNB. Not sure how well it will work though!
+
+
+```{python}
+import arviz as az
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import pymc as pm
+import bambi as bmb
+import seaborn as sns
+```
+
+
+
+```{python}
+eagles = pd.read_csv('bald_eagles.csv')
+eagles.head()
+```
+
+
+```{python}
+eagles.describe()
+```
+
+
+### Exercise 12.5
+
+a) Look at count independant of the rest
+
+```{python}
+sns.histplot(eagles['count'])
+```
+
+b) Count vs year
+
+ 
+
+```{python}
+sns.scatterplot(data = eagles, x =  'year', y= 'count')
+```
+
+It does appear that the variance gets bigger as years go on, so a poissoin distribution could be tried.
+
+c) Observation periods vary from year to year, from 134 to 248 hours. 
+```{python}
+sns.scatterplot(data = eagles, x =  'year', y= 'hours')
+```
+
+
+It looks like the spread in hours is rather uniform, but also that there is a jump around 2004, so that it is not independant of the year.
+
+```{python}
+sns.scatterplot(data = eagles, x =  'hours', y= 'count')
+```
+
+This tells us that hours have an (expected!) effect on the counts, so we will need to include (control for) that in our models.
+
+### Exercise 12.7
+ 
+
+```{python}
+model1 = bmb.Model('count ~ year + hours', eagles, family='poisson')
+model1.build()
+model1.plot_priors()
+```
+
+:::{.callout-tip}
+## Quarto issue
+
+Needs cores=1 to avoid broken pipe error. 
+:::
+
+```{python}
+results1 = model1.fit(draws=10000, chains=4,cores=1)
+az.plot_trace(results1)
+az.summary(results1)
+```
+
+Diagnostics look good, so moving on to look at the posterior check>
+
+```{python}
+model1.predict(results1, kind='pps', inplace= True)
+az.plot_ppc(results1, num_pp_samples = 30)
+```
+
+This looks quite good to me.
+
+
+### Exercise 12.8
+
+
+
+### Exercise 12.9
