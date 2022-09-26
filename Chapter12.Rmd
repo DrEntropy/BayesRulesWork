@@ -1,0 +1,176 @@
+# CHapter 12
+
+## Poission regression
+
+
+
+```{r}
+library(bayesrules)
+library(rstanarm)
+library(bayesplot)
+library(tidyverse)
+library(tidybayes)
+library(broom.mixed)
+
+data(equality_index)
+equality <- equality_index
+
+```
+
+```{r}
+ggplot(equality, aes(x = laws)) + 
+  geom_histogram(color = "white", breaks = seq(0, 160, by = 10))
+```
+
+```{r}
+# Remove outlier (California, of course)
+
+equality <- equality %>% 
+    filter(laws != max(laws))
+```
+
+Now a scatterplot to show the general trends
+
+```{r}
+ggplot(equality, aes(y= laws, x = percent_urban, color = historical)) + geom_point()
+```
+
+Note the heavy correlation between percent urban and political history
+
+```{r, message = FALSE}
+equality_model_prior <- stan_glm(laws ~ percent_urban + historical, 
+                                 data = equality, 
+                                 family = poisson,
+                                 prior_intercept = normal(2, 0.5),
+                                 prior = normal(0, 2.5, autoscale = TRUE), 
+                                 chains = 4, iter = 5000*2, seed = 84735, 
+                                 prior_PD = TRUE)
+
+```
+```{r}
+
+prior_summary(equality_model_prior)
+```
+
+Ok lets sim the posterior:
+
+```{r}
+
+equality_model <- update(equality_model_prior, prior_PD = FALSE)
+```
+
+
+```{r}
+tidy(equality_model, conf.int = TRUE, conf.level = 0.80)
+```
+
+
+
+```{r}
+mcmc_trace(equality_model)
+mcmc_dens_overlay(equality_model)
+mcmc_acf(equality_model)
+```
+
+```{r}
+pp_check(equality_model, plotfun = 'hist', nreps= 5) + 
+     xlab("laws")
+```
+
+I 
+```{r}
+equality %>%
+  add_epred_draws(equality_model, ndraws = 50) %>%
+  ggplot(aes(x = percent_urban, y = laws, color = historical)) +
+    geom_line(aes(y = .epred, group = paste(historical, .draw)), 
+              alpha = .1) +
+    geom_point(data = equality, size = 0.1)
+```
+
+If you want the draws, as a reminder,  `as.data.frame` flattens all teh samples as a nice data frame.
+
+```{r}
+post_sim = as.data.frame(equality_model)
+```
+ 
+ 
+```{r}
+set.seed(84735)
+poisson_predictions <- posterior_predict(equality_model, newdata = equality)
+
+# Plot the posterior predictive models for each state
+ppc_intervals_grouped(equality$laws, yrep = poisson_predictions, 
+                      x = equality$percent_urban, 
+                      group = equality$historical,
+                      prob = 0.5, prob_outer = 0.95,
+                      facet_args = list(scales = "fixed"))
+```
+
+
+```{r}
+# Cross-validation
+set.seed(84735)
+poisson_cv <- prediction_summary_cv(model = equality_model, 
+                                    data = equality, k = 10)
+poisson_cv$cv
+```
+
+
+
+## Negative binomial regression
+
+```{r}
+# Load data
+data(pulse_of_the_nation)
+pulse <- pulse_of_the_nation %>% 
+  filter(books < 100)
+```
+
+
+```{r}
+pulse %>% 
+  group_by(cut(age,3), wise_unwise) %>% 
+  summarize(mean = mean(books), var = var(books))
+```
+
+```{r}
+books_negbin_sim <- stan_glm(
+  books ~ age + wise_unwise, 
+  data = pulse, family = neg_binomial_2,
+  prior_intercept = normal(0, 2.5, autoscale = TRUE),
+  prior = normal(0, 2.5, autoscale = TRUE), 
+  prior_aux = exponential(1, autoscale = TRUE),
+  chains = 4, iter = 5000*2, seed = 84735)
+```
+
+
+```{r}
+pp_check(books_negbin_sim) + 
+  xlim(0, 75) + 
+  xlab("books")
+```
+ 
+
+```{r}
+tidy(books_negbin_sim, conf.int = TRUE, conf.level = 0.80)
+```
+
+Note that tidy doesnt give me the reciprical dispersion, but it is in the samples
+
+```{r}
+test <- as.data.frame(books_negbin_sim)
+```
+
+
+## Exercise prep
+
+As usual i will do the exercises with pymc, but i need to export the data
+
+```{r}
+data("bald_eagles")
+```
+
+```{r}
+write.csv(bald_eagles, "bald_eagles.csv")
+```
+
