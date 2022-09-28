@@ -1,0 +1,184 @@
+# Chapter 13 - Hotel Bookings
+
+For this chapter, since I did some logistic regression in Python for Kaggle, lets try Rstan !
+
+```{r}
+# Load packages
+library(bayesrules)
+library(rstanarm)
+library(bayesplot)
+library(tidyverse)
+library(tidybayes)
+library(broom.mixed)
+```
+
+
+```{r}
+data("hotel_bookings")
+```
+
+## Exercise 13.6 
+
+### Proportion of the sample bookings were cancelled?
+ %
+```{r}
+hotel_bookings %>%  
+   select(is_canceled)  %>% summarize(fraction_cancelled = mean(is_canceled==1))
+```
+
+
+### Look at plots of each predictor vs `is_canceled`
+
+The predictors the problem are `lead time` `previous_cancellations` `is_repeated_guest` and `average_daily_rate`
+
+We care going to need to do some cuts
+
+
+```{r}
+hotel_bookings <- hotel_bookings %>% 
+   select(is_canceled,lead_time, previous_cancellations, is_repeated_guest, average_daily_rate )
+```
+ 
+ 
+
+
+```{r}
+hotel_bookings %>% summarise(across(where(is.numeric), mean))
+```
+```{r}
+hotel_bookings %>% summarise(across(where(is.numeric), max))
+```
+
+
+```{r}
+hotel_bookings %>% group_by(is_repeated_guest) %>% 
+  summarize(cancel_rate = mean(is_canceled==1))
+```
+
+Looks like repeated guests are less likely to cancel
+
+
+```{r}
+hotel_bookings %>%
+  mutate(lead_time_cut = cut(lead_time, breaks =10)) %>%
+   group_by(lead_time_cut) %>% summarize(cancel_rate = mean(is_canceled==1)) %>%
+  ggplot(aes(x= lead_time_cut, y= cancel_rate)) + 
+    geom_point() + 
+    theme(axis.text.x = element_text(angle=45, vjust =0.5))
+```
+ 
+ Longer lead times lead to more cancellations
+ 
+```{r}
+hotel_bookings %>%
+  mutate(previous_cancel_cut = cut(previous_cancellations, breaks = c(-5,0,5,10,15,25,30))) %>%
+   group_by(previous_cancel_cut) %>% summarize(cancel_rate = mean(is_canceled==1)) %>%
+  ggplot(aes(x= previous_cancel_cut, y= cancel_rate)) + 
+    geom_point() + 
+    theme(axis.text.x = element_text(angle=45, vjust =0.5))
+```
+ 
+Previously cancelling many times is a very strong predictor.
+
+
+
+```{r}
+hotel_bookings %>%
+  mutate(daily_rate_cut = cut(average_daily_rate, breaks = seq(-50,400,50))) %>%
+   group_by(daily_rate_cut) %>% summarize(cancel_rate = mean(is_canceled==1)) %>%
+  ggplot(aes(x= daily_rate_cut, y= cancel_rate)) + 
+    geom_point() + 
+    theme(axis.text.x = element_text(angle=45, vjust =0.5))
+```
+
+weak predictors, but higher rates lead to more cancellations (except for the very high!)
+Note the odd 'free' hotels. 
+
+```{r}
+hotel_bookings %>%
+  mutate(daily_rate_cut = cut(average_daily_rate, breaks = seq(-50,400,50))) %>%
+   group_by(daily_rate_cut) %>% count
+
+``` 
+
+### Model choice
+
+For the model we will use  `is_cancelled ~ lead_time + previous_cancellations + is_repeated_guest + average_daily_rate` with Binomial family and default logit link.
+
+I will use weakly informative priors centered at zero, including for the centered intercept.
+
+
+
+## Exercise 13.7 
+
+
+                             
+```{r}
+cancel_model <- stan_glm(is_canceled ~ lead_time + previous_cancellations + is_repeated_guest + average_daily_rate,
+                             data = hotel_bookings, family = binomial,
+                             prior_intercept = normal(0,1,autoscale=TRUE),
+                             prior = normal(0,1, autoscale=TRUE),
+                             chains = 4, iter = 5000*2, seed = 84735 )
+```
+
+
+```{r}
+prior_summary(cancel_model)
+```
+```{r}
+mcmc_trace(cancel_model)
+```
+
+```{r}
+mcmc_dens_overlay(cancel_model)
+```
+
+
+```{r}
+proportion_cancel <- function(x){mean(x == 1)}
+
+pp_check(cancel_model, nreps = 100,
+         plotfun = "stat", stat = "proportion_cancel") + 
+  xlab("probability of cancel")
+```
+
+Looks good. Now lets look at the model
+
+
+```{r}
+tidy(cancel_model, effects = "fixed", conf.int = TRUE, conf.level = 0.80)
+```
+
+The model is simply the logit of the linear model described above, not going to write it down though.
+ 
+Note that these are log odds. to get odds;
+
+```{r}
+exp(posterior_interval(cancel_model,prob=.8))
+```
+
+
+
+
+Looks to me that all expect perhaps `is_repeated_guest` are statistically significant.
+
+For lead time , each 10 days of lead time will cause about a 5% increase in odds of cancelling , so is not very strong
+For previous cancellations, it is clear that having multiple previous cancellations is storng.
+For repeated_guest,  being repeat guest means the odds are decreased by about half. 
+Finally every 10 dollar increase in rate causes an increats of about 7% as well in the odds, so not very strong there either.
+
+
+
+
+## Exercise 13.8
+
+```{r}
+classification_summary(model = cancel_model, data= hotel_bookings, cutoff = 0.5)
+```
+
+Lets do it by hand:
+
+
+
+
+## Exercise 13.9
