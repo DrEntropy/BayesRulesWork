@@ -31,16 +31,12 @@ hotel_bookings %>%
 
 The predictors the problem are `lead time` `previous_cancellations` `is_repeated_guest` and `average_daily_rate`
 
-We care going to need to do some cuts
-
-
 ```{r}
 hotel_bookings <- hotel_bookings %>% 
    select(is_canceled,lead_time, previous_cancellations, is_repeated_guest, average_daily_rate )
 ```
  
- 
-
+Average valuesa  and max values are of interest:
 
 ```{r}
 hotel_bookings %>% summarise(across(where(is.numeric), mean))
@@ -55,8 +51,9 @@ hotel_bookings %>% group_by(is_repeated_guest) %>%
   summarize(cancel_rate = mean(is_canceled==1))
 ```
 
-Looks like repeated guests are less likely to cancel
+Looks like repeated guests are less likely to cancel (makes sense)
 
+For the others, we will need to make some cuts to bin the quantitative variables:
 
 ```{r}
 hotel_bookings %>%
@@ -67,7 +64,7 @@ hotel_bookings %>%
     theme(axis.text.x = element_text(angle=45, vjust =0.5))
 ```
  
- Longer lead times lead to more cancellations
+Longer lead times lead to more cancellations
  
 ```{r}
 hotel_bookings %>%
@@ -91,7 +88,7 @@ hotel_bookings %>%
     theme(axis.text.x = element_text(angle=45, vjust =0.5))
 ```
 
-weak predictors, but higher rates lead to more cancellations (except for the very high!)
+Weak predictor, but higher rates lead to more cancellations (except for the very high!)
 Note the odd 'free' hotels. 
 
 ```{r}
@@ -108,10 +105,9 @@ For the model we will use  `is_cancelled ~ lead_time + previous_cancellations + 
 I will use weakly informative priors centered at zero, including for the centered intercept.
 
 
-
 ## Exercise 13.7 
 
-
+### Simulation of posterior
                              
 ```{r}
 cancel_model <- stan_glm(is_canceled ~ lead_time + previous_cancellations + is_repeated_guest + average_daily_rate,
@@ -134,6 +130,8 @@ mcmc_dens_overlay(cancel_model)
 ```
 
 
+### Model check (PP check)
+
 ```{r}
 proportion_cancel <- function(x){mean(x == 1)}
 
@@ -143,6 +141,8 @@ pp_check(cancel_model, nreps = 100,
 ```
 
 Looks good. Now lets look at the model
+
+### Parameter posteriors 
 
 
 ```{r}
@@ -160,7 +160,7 @@ exp(posterior_interval(cancel_model,prob=.8))
 
 
 
-Looks to me that all expect perhaps `is_repeated_guest` are statistically significant.
+Looks to me that all except perhaps `is_repeated_guest` are statistically significant.
 
 For lead time , each 10 days of lead time will cause about a 5% increase in odds of cancelling , so is not very strong
 For previous cancellations, it is clear that having multiple previous cancellations is storng.
@@ -172,13 +172,112 @@ Finally every 10 dollar increase in rate causes an increats of about 7% as well 
 
 ## Exercise 13.8
 
+### Accuracy
+
+First using the `bayesrules` shortcut:
+
 ```{r}
-classification_summary(model = cancel_model, data= hotel_bookings, cutoff = 0.5)
+classification_summary(model = cancel_model, data= hotel_bookings, cutoff = 0.5)$confusion_matrix
 ```
 
 Lets do it by hand:
 
+```{r}
+cancel_pred <- posterior_predict(cancel_model)
+dim(cancel_pred)
+```
+
+`cancel_pred` contains 20000 predictions for each data point in the original data.  We now compute the p value fore ach one
 
 
+```{r}
+cancel_classifications <- hotel_bookings %>% 
+  mutate(cancel_prob = colMeans(cancel_pred),
+         cancel_class = as.numeric(cancel_prob >= 0.5),
+         match = cancel_class == is_canceled) 
+```
+
+
+```{r}
+cancel_classifications  %>% 
+  group_by(cancel_class,is_canceled) %>% count %>% pivot_wider(names_from=is_canceled,values_from=n)
+```
+
+This gives the confusion matrix using the best of my abilities in R at the moment ;).  The book uses `table`, which is perhaps easier.
+
+Overall prediction accuracy with 50% cut off:
+
+```{r}
+mean(cancel_classifications$match)
+```
+
+68% accuracy in sample
+
+Cross validation:
+
+```{r}
+cv_accuracy <- classification_summary_cv(
+  model = cancel_model, data = hotel_bookings, cutoff = 0.5, k = 10)
+```
+
+```{r}
+cv_accuracy$cv
+```
+
+Accuracy basically matches, so we are not overfitting by this metric.
+
+### Achieve 75% sensitivity.
+
+We would like a sensitivity of 75%.  What cutoff will do that, and what is the specificity?  By trial and error I find 0.3 works well enough:
+
+```{r}
+classification_summary(model = cancel_model, data= hotel_bookings, cutoff = 0.3)$accuracy_rates
+```
+
+A cut off of 0.3 gives us 77% (0.31 drops that to 72%) so lets stick with this. With this cutt off we identify true cancellations about 77% of the time, but also falsly identify cancelations at the rate of 51% which means we cannot take any strong measures or risk alienating out customers !
+
+Check cv:
+
+```{r}
+cv_accuracy <- classification_summary_cv(
+  model = cancel_model, data = hotel_bookings, cutoff = 0.3, k = 10)
+```
+
+```{r}
+cv_accuracy$cv
+```
 
 ## Exercise 13.9
+
+A guest that is new to a hotel and has only canceled a booking 1 time before, has booked a $100 per day hotel room 30 days in advance. Simulate, plot, and discuss the posterior predictive model of  Y, whether or not the guest will cancel this booking.
+
+```{r}
+cancel_guest <- posterior_predict(cancel_model, newdata = data.frame(previous_cancellations = c(1), 
+                                                                     is_repeated_guest=c(0), average_daily_rate=c(100),
+                                                                     lead_time= c(30)))
+dim(cancel_guest)
+mean(cancel_guest)
+```
+
+76% chance that this guest will cancel.
+
+We can do this directly with the model rather then posterior predict:
+```{r}
+customer_model <- as.data.frame(cancel_model) %>% 
+  mutate(log_odds = `(Intercept)` + previous_cancellations*1 + average_daily_rate*100 + lead_time*30,
+         odds = exp(log_odds),
+         prob = odds / (1 + odds),
+         Y = rbinom(20000, size = 1, prob = prob))
+```
+
+```{r}
+mean(customer_model$prob)
+```
+
+Or using Y
+```{r}
+mean(customer_model$Y)
+```
+
+Note that $\bar{Y} = \Sigma p P(p)  = \bar{p}$  so we expect these to be the same within statistical accuracy.
+
