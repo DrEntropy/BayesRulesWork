@@ -234,7 +234,9 @@ We would like a sensitivity of 75%.  What cutoff will do that, and what is the s
 classification_summary(model = cancel_model, data= hotel_bookings, cutoff = 0.3)$accuracy_rates
 ```
 
-A cut off of 0.3 gives us 77% (0.31 drops that to 72%) so lets stick with this. With this cutt off we identify true cancellations about 77% of the time, but also falsly identify cancelations at the rate of 51% which means we cannot take any strong measures or risk alienating out customers !
+A cut off of 0.3 gives us 77% (0.31 drops that to 72%) so lets stick with this. With this cutt off we identify true cancellations about 77% of the time, but also falsly identify cancelations about half the time 51% which is significantly worse then it was before.  If it were me I would want a false alarm rate below 10% to be sure not to piss off customers, which is what we get with a cutoff of about 0.5. But a true cost of false alarms vs cost of cancelled bookings would need to be considered.
+
+
 
 Check cv:
 
@@ -280,4 +282,20 @@ mean(customer_model$Y)
 ```
 
 Note that $\bar{Y} = \Sigma p P(p)  = \bar{p}$  so we expect these to be the same within statistical accuracy.
+
+If we wanted someone that was even MORE likely to cancel the key thing is lots of previous cancellations, lets say 10 previous cancellations. Lets assume it is a repeated guest to make it more realistic
+
+```{r}
+customer_model2 <- as.data.frame(cancel_model) %>% 
+  mutate(log_odds = `(Intercept)` + previous_cancellations*10+ is_repeated_guest + average_daily_rate*100 + lead_time*30,
+         odds = exp(log_odds),
+         prob = odds / (1 + odds),
+         Y = rbinom(20000, size = 1, prob = prob))
+mean(customer_model2$Y)
+mean(customer_model2$prob)
+```
+
+CERTAIN to cancel. 
+
+
 
