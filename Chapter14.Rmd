@@ -1,0 +1,104 @@
+# Chapter 14 - Fake news
+
+Using R again for Chapter 14, dont want to get into Naive Bayes in Python.
+
+```{r}
+# Load packages
+# Load packages
+library(bayesrules)
+library(tidyverse)
+library(e1071)
+library(janitor)
+ 
+ 
+```
+
+
+```{r}
+data('fake_news')
+```
+
+
+## Exercise 14.4 
+
+Goal of this and following is to classify articles `type` real or fake. 
+Note the following is copied of the interwebs, I am not that great at R!
+
+```{r}
+ 
+fake_news %>%
+   select_if(function(x) any(is.na(x))) %>%
+  summarize(across(everything(), ~sum(is.na(.)))) -> na_count
+
+na_count
+```
+
+Looks like urls and authors are the only ones with NA's in it.
+
+```{r}
+ggplot(fake_news, aes(fill= title_has_excl, x = type)) + 
+   geom_bar(position = "fill")
+
+```
+
+Ok first we will do a 'by scratch' naive bays.
+
+```{r}
+fractions <- fake_news %>% tabyl(type)
+fractions
+```
+
+```{r}
+fake_news %>% 
+  tabyl(type, title_has_excl) %>% adorn_totals(c("row","col"))
+```
+This is all the data we need to compute the naive bayesian prob that an article without an expl point is real.
+
+```{r}
+fake = 0.4*44/60
+real = 0.6*88/90
+
+real/(fake+real)
+```
+
+
+```{r}
+excl_model<- naiveBayes(type ~ title_has_excl, data = fake_news)
+predict(excl_model, newdata = data.frame(title_has_excl = FALSE),type = "raw")
+```
+
+
+## Exercise 14.5  - title length
+```{r}
+ggplot(fake_news, aes(x = title_words, fill = type)) + 
+  geom_density(alpha = 0.7) 
+``` 
+
+so in rough terms fake articles TEND to have longer titles. Note however these are not very normal, especially with the long tail of the real articles into long titles. Howeer, I think guassians can capture the general shape . 
+
+
+Once again we will do the prediction from scratch, assuming a new article has 15 words.  (copying the books tidy code!)
+
+```{r}
+fake_news %>% 
+  group_by(type) %>% 
+  summarize(mean = mean(title_words, na.rm = TRUE), 
+            sd = sd(title_words, na.rm = TRUE))
+
+```
+
+```{r}
+real <- 0.6*dnorm(15,mean = 10.422, sd = 3.20)
+fake <- 0.4*dnorm(15, mean = 12.32, sd = 3.744)
+real/(fake+real)
+```
+```{r}
+word_count_model <- naiveBayes(type ~ title_words, data = fake_news)
+predict(word_count_model, newdata = data.frame(title_words = 15),type = "raw")
+```
+
+Works!
+
+
+
+## Execise 14.6
