@@ -1,0 +1,249 @@
+# Chapter 14 - Fake news
+
+Using R again for Chapter 14, dont want to get into Naive Bayes in Python.
+
+```{r}
+# Load packages
+# Load packages
+library(bayesrules)
+library(tidyverse)
+library(e1071)
+library(janitor)
+ 
+ 
+```
+
+
+```{r}
+data('fake_news')
+```
+
+
+## Exercise 14.4 
+
+Goal of this and following is to classify articles `type` real or fake. 
+Note the following is copied of the interwebs, I am not that great at R!
+
+```{r}
+ 
+fake_news %>%
+   select_if(function(x) any(is.na(x))) %>%
+  summarize(across(everything(), ~sum(is.na(.)))) -> na_count
+
+na_count
+```
+
+Looks like urls and authors are the only ones with NA's in it.
+
+```{r}
+ggplot(fake_news, aes(fill= title_has_excl, x = type)) + 
+   geom_bar(position = "fill")
+
+```
+
+Ok first we will do a 'by scratch' naive bays.
+
+```{r}
+fractions <- fake_news %>% tabyl(type)
+fractions
+```
+
+```{r}
+fake_news %>% 
+  tabyl(type, title_has_excl) %>% adorn_totals(c("row","col"))
+```
+This is all the data we need to compute the naive bayesian prob that an article without an expl point is real.
+
+```{r}
+fake = 0.4*44/60
+real = 0.6*88/90
+
+real/(fake+real)
+```
+
+
+```{r}
+news_model_1<- naiveBayes(type ~ title_has_excl, data = fake_news)
+predict(news_model_1, newdata = data.frame(title_has_excl = FALSE),type = "raw")
+```
+
+
+## Exercise 14.5  - title length
+```{r}
+ggplot(fake_news, aes(x = title_words, fill = type)) + 
+  geom_density(alpha = 0.7) 
+``` 
+
+so in rough terms fake articles TEND to have longer titles. Note however these are not very normal, especially with the long tail of the real articles into long titles. Howeer, I think guassians can capture the general shape . 
+
+
+Once again we will do the prediction from scratch, assuming a new article has 15 words.  (copying the books tidy code!)
+
+```{r}
+fake_news %>% 
+  group_by(type) %>% 
+  summarize(mean = mean(title_words, na.rm = TRUE), 
+            sd = sd(title_words, na.rm = TRUE))
+
+```
+
+```{r}
+real <- 0.6*dnorm(15,mean = 10.422, sd = 3.20)
+fake <- 0.4*dnorm(15, mean = 12.32, sd = 3.744)
+real/(fake+real)
+```
+```{r}
+news_model_2 <- naiveBayes(type ~ title_words, data = fake_news)
+predict(news_model_2, newdata = data.frame(title_words = 15),type = "raw")
+```
+
+Works!
+
+
+
+## Execise 14.6
+
+Now we will add negative sentiment to the picture
+```{r}
+ggplot(fake_news, aes(x = negative, fill = type)) + 
+  geom_density(alpha = 0.7) 
+``` 
+
+Looks like normal distributions will work ok, but there is a small seperation.
+
+How abotu negative sentimate and title length?
+
+```{r}
+ggplot(fake_news,
+       aes(x = negative, y = title_words, color = type)) + 
+  geom_point()
+```
+
+Note a lot of clustering to be honest. But they do seem somewhat independent.
+
+Ok now we have a 6% negative article with 15 word title, is it real? 
+
+
+```{r}
+two_pred_stats <- fake_news %>% 
+  group_by(type) %>% 
+  summarize(mean_tw = mean(title_words, na.rm = TRUE), 
+            sd_tw = sd(title_words, na.rm = TRUE),
+            mean_neg = mean(negative, na.rm = TRUE), 
+            sd_neg = sd(negative, na.rm = TRUE))
+            
+two_pred_stats
+```
+
+
+```{r}
+real <- 0.6*dnorm(15,two_pred_stats$mean_tw[2], two_pred_stats$sd_tw[2])*dnorm(6,two_pred_stats$mean_neg[2], two_pred_stats$sd_neg[2])
+fake <- 0.4*dnorm(15,two_pred_stats$mean_tw[1], two_pred_stats$sd_tw[1])*dnorm(6,two_pred_stats$mean_neg[1], two_pred_stats$sd_neg[1])
+real/(fake+real)
+```
+
+```{r}
+news_model_3 <- naiveBayes(type ~ title_words + negative, data = fake_news)
+predict(news_model_3, newdata = data.frame(title_words = 15, negative =6.0),type = "raw")
+```
+
+## Exercise 14.7
+
+Three predictors , 15 words, 6% are negative, and does NOT have an '!'
+
+```{r}
+news_model_4 <- naiveBayes(type ~ title_words + negative + title_has_excl, data = fake_news)
+predict(news_model_4, newdata = data.frame(title_words = 15, negative =6.0, title_has_excl = FALSE),type = "raw")
+```
+
+## Exercise 14.8  
+
+
+```{r}
+cv_model_1 <- naive_classification_summary_cv(
+  model = news_model_1, data = fake_news, y = "type", k = 10)
+
+cv_model_1$cv
+```
+This says that fake articles are correctly identified as fake only 26% of the time, etc.  But only mis-identifies real articles as fake 2% of the time, which is pretty good.
+
+```{r}
+cv_model_2 <- naive_classification_summary_cv(
+  model = news_model_2, data = fake_news, y = "type", k = 10)
+
+cv_model_2$cv
+```
+
+News model 2 is better at correctly identifying fakes, but with increased false alarms.
+
+```{r}
+cv_model_3 <- naive_classification_summary_cv(
+  model = news_model_3, data = fake_news, y = "type", k = 10)
+
+cv_model_3$cv
+```
+
+Only marginally better then model 2
+
+```{r}
+cv_model_4 <- naive_classification_summary_cv(
+  model = news_model_4, data = fake_news, y = "type", k = 10)
+
+cv_model_4$cv
+```
+
+Overall IMHO, model 1 is better since if doesnt misidentify as many real articles. However if your goal is really to best detect when an article is fake that IS fake, then model 4 is your winner.
+
+However we could perhaps vary the threshold.
+
+## Exercise 14.9
+
+Logistic version.
+
+```{r}
+library(rstanarm)
+logi_model <- stan_glm(type ~ title_words + negative + title_has_excl, data = fake_news, family = binomial,
+                             chains = 4, iter = 5000*2, seed = 84735 )
+```
+
+```{r}
+prior_summary(logi_model)
+```
+```{r}
+library(bayesplot)
+mcmc_trace(logi_model)
+```
+
+
+diagnostics look good.
+```{r}
+proportion_true <- function(x){mean(x == 1)}
+
+pp_check(logi_model, nreps = 100,
+         plotfun = "stat", stat = "proportion_true") + 
+  xlab("probability of true")
+```
+
+And how does the model look?
+
+ 
+```{r}
+library(broom.mixed)
+
+tidy(logi_model, effects = "fixed", conf.int = TRUE, conf.level = 0.80)
+```
+
+
+Inspecting this, looks like all are significant to some extent 
+
+
+```{r}
+
+classification_summary_cv(model = logi_model, data= fake_news, cutoff = 0.5,k=10)$cv 
+```
+
+  
+ Note that 'true' here means that the store is real.  So this means that real stories are identified as real 86% of the time, meaning that they are identified as fake 14% of the  time, about as good as model 4. As for specificity this means that fake stories are identified as fake about 46% of the time, again about as good as model 4. So model 4 and the logistic regression have the same power on this model (based on the same parameters.)
+
+
+
