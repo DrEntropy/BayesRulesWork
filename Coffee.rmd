@@ -1,0 +1,63 @@
+
+Looking at the coffee ratings to decide if it is hierarchical or not. No intention to run any models.
+
+```{r}
+library(bayesrules)
+library(tidyverse)
+library(janitor)
+```
+
+
+```{r}
+coffee_ratings <- coffee_ratings %>% filter(flavor > 5)
+```
+
+ 
+```{r}
+ggplot(data = coffee_ratings) + geom_freqpoly(mapping = aes(x=flavor, color =species, y = ..density..))
+```
+
+
+```{r}
+tabyl(coffee_ratings,country_of_origin,species)
+```
+From this we can see that there are only a few countries producing Robusta at all, and not very many batches are of that kind.  
+
+So perhaps it would make sense to control for this , since for some countries the baseline probabiliy will be higher then for others (where it might be zero)
+
+Let me try to see how the probability depends on country and flavor:
+
+
+```{r}
+coffee_ratings <- coffee_ratings %>%
+   mutate(flavor_bin = cut(flavor, breaks = seq(6,9,.5))) 
+
+test <- coffee_ratings %>% 
+  group_by(flavor_bin, country_of_origin) %>%
+  summarize(prob_robusta = mean(species == 'Robusta'),.groups='drop')
+
+ggplot(data = test) + 
+  geom_point(mapping=aes(x=flavor_bin, y = prob_robusta, color = country_of_origin))
+```
+
+Well there is just not a lot of data. Clearly baseline probability is zero for most, lets cut those out.
+
+```{r}
+countries_with_robusta = coffee_ratings %>% group_by(country_of_origin) %>% summarize(robusta_count = sum(species=='Robusta')) %>% filter(robusta_count > 0) %>% pull(country_of_origin)
+```
+
+
+```{r}
+test2 <- coffee_ratings %>% filter(country_of_origin %in% countries_with_robusta )%>%
+  group_by(flavor_bin, country_of_origin) %>%
+  summarize(prob_robusta = mean(species == 'Robusta'),.groups='drop')
+
+ggplot(data = test2) + 
+  geom_point(mapping=aes(x=flavor_bin, y = prob_robusta, color = country_of_origin, shape=country_of_origin)) 
+
+```
+
+
+
+But on the other hand there is not a lot of data . 
+
