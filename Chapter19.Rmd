@@ -1,0 +1,12 @@
+```{r,echo=FALSE, message = FALSE, warning=FALSE}
+# Load packages
+library(bayesrules)
+library(tidyverse)
+library(bayesplot)
+library(rstanarm)
+library(janitor)
+library(tidybayes)
+library(broom.mixed)
+library(gridExtra)
+```
+
