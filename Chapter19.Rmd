@@ -1,0 +1,87 @@
+```{r,echo=FALSE, message = FALSE, warning=FALSE}
+# Load packages
+library(bayesrules)
+library(tidyverse)
+library(bayesplot)
+library(rstanarm)
+library(janitor)
+library(tidybayes)
+library(broom.mixed)
+library(gridExtra)
+```
+
+## Exercise 19.2 
+
+In Chapter 19, you utilized the climbers_sub data to model whether or not a mountain climber had success, while accounting for the grouping structure in expedition_id and peak_id. Indicate whether each variable below is a potential climber-level, expedition-level, or peak-level predictor of success. Support your claim with evidence.
+
+
+a) height_metres
+
+b) age
+
+c) count
+
+d) expedition_role 
+
+e) first_ascent_year
+
+<details>
+  <summary>My answers</summary>
+   
+   a) peak
+   b) climber
+   c) expedition (see  ? climbers_sub)
+   d) climber
+   e) peak
+  
+</details>
+
+## Exercise 19.3
+
+To study the occurrence of widget defects, researchers enlisted 3 different workers at each of 4 different factories into a study. Each worker produced 5 widgets and researchers recorded the number of defects in each widget.
+
+a) There are two grouping variables in this study. Name them.
+ 
+b) In the spirit of Figure 19.7, draw a diagram which illustrates the grouping structure of the resulting study data.
+
+c) Is the study data “nested?” Explain.
+
+## Exercise 19.4
+
+Continuing with the widget study, let $Y_{ijk}$ be the number of defects for the $i$th widget made by worker $j$ at factory $k$. Suppose the following is a reasonable model of  $Y_{ijk}$:
+ 
+$$
+Y_{ijk}|\beta_0,b_{0j},f_{0k}\sim N(\mu_{ijk},\sigma_y^2) \text{ with } \mu_{ijk} = \beta_0 + b_{0j} + f_{0k}\\
+b_{0j}|\sigma_b\sim N(0,\sigma_b^2)\\
+f_{0k}|\sigma_f\sim N(0,\sigma_f^2)\\
+\beta_{0c}, \sigma_b, \sigma_f \sim \text{ some ind. priors}
+$$
+
+a) Explain the meaning of the $\beta_0$ term in this context.
+
+<details>
+  <summary>My answer</summary>
+  $\beta_0$ is the median number of defects overall
+</details>
+<br>
+
+b) Explain the meaning of $b_{0j}$ and $f_{0k}$ in this context.
+
+<details>
+  <summary>My answer</summary>
+  $b_{0j}$ and $f_{0k}$ are the tweaks to the median number of defects for each worker and factory respectively.
+</details>
+<br>
+
+c) Suppose that the variance parameters  $(\sigma_y, \sigma_b, \sigma_f)$ have posterior median values (2,10,1).   Compare and contrast these values in the context of widget manufacturing.
+
+<details>
+  <summary>My answer</summary>
+   This suggests that contribution to the variance in defects is mostly due to worker to worker variation, which is large compared to both the factory to factory variation and the within worker variation.   The small factory to factory standard deviation  suggests that defects between factories tend to be similar.  
+</details>
+<br>
+
+## Exercise 19.9 
+
+TBD
+
